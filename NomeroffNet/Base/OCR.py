@@ -77,6 +77,10 @@ class OCR(TextImageGenerator):
         letters_train = set(c_train.keys())
         letters_val = set(c_val.keys())
         letters_test = set(c_test.keys())
+        if verbose:
+            print("Letters train ", letters_train)
+            print("Letters val ", letters_val)
+            print("Letters test ", letters_test)
 
         if max_plate_length_val == max_plate_length_train:
             if verbose:
@@ -217,7 +221,6 @@ class OCR(TextImageGenerator):
             print("DATA PREPARED")
 
     def train(self, mode="cpu", is_random=1, model_path="./model.h5", load=False, verbose=1):
-        keras.backend.clear_session()
         if mode == "gpu":
             self.GRU = GRUgpu
         if mode == "cpu":

@@ -1,12 +1,13 @@
 const config  = require('config'),
       path = require("path"),
-      fs = require("fs")
+      fs = require("fs"),
+      sizeOf = require('image-size')
 ;
 const base_dir = config.moderation.regionOCRModeration.base_dir;
 const img = path.join(base_dir, "/img/");
 const ann = path.join(base_dir, "/ann/");
 
-function chencheAnnotation (img, ann, chended_numbers, who) {
+function chencheAnnotation (img, ann, chended_numbers, template) {
     if (chended_numbers === undefined) {
         return;
     }
@@ -35,23 +36,32 @@ module.exports = function(ctx, next) {
     const chended_numbers = ctx.request.body.chended_numbers;
     const who_changed = ctx.request.body.who_changed;
 
+    let template = Object.assign({}, config.moderation.template);
+
+    // checkers
     if (!fs.existsSync(base_dir)) {
         ctx.body = {
-            message: `Path to ${base_dir} not exists`
+            message: `Path to '${base_dir}' not exists`
         };
-    } else if (!fs.existsSync(img)) {
+    }
+    if (!fs.existsSync(img)) {
         fs.mkdirSync(img);
-    } else if (!fs.existsSync(ann)) {
-        fs.mkdirSync(ann);
-    } else {
-        chencheAnnotation(img, ann, chended_numbers, who_changed);
+        ctx.body = {
+            message: `Image dir '${img}' empty`
+        };
+    }
 
+    if (!ctx.body) {
+        if (!fs.existsSync(ann)) {
+            fs.mkdirSync(ann);
+        }
+        chencheAnnotation(img, ann, chended_numbers, template);
+
+        console.log(template);
         const files = fs.readdirSync(img);
 
-        const err_data = [];
         const res = [];
         let count = 0;
-        let iter = 0;
         for (let i in files) {
 
             const f = files[i];
@@ -63,41 +73,36 @@ module.exports = function(ctx, next) {
 
             let data = {};
             if (!fs.existsSync(jsonPath)) {
-                data = {
-                    description: ""
-                }
+                data = template;
             } else {
-                data = JSON.parse(fs.readFileSync(jsonPath));
+                data = Object.assign({}, template, JSON.parse(fs.readFileSync(jsonPath)));
             }
-
-
-            if (data.moderation == undefined || data.moderation.isModerated != 1) {
-                err_data.push(data.moderation);
-                count++;
-                console.log(data.moderation === undefined ? "" : data.moderation.predicted || "");
+            if (!data.moderation || !data.moderation.isModerated) {
                 const data_item = {
                     img_path: `img/${f}`,
                     name: number,
                     predicted: data.moderation === undefined ? "" : data.moderation.predicted || "",
                     description: data.description,
                 };
+                console.log(data_item);
                 const options = config.moderation.regionOCRModeration.options;
                 for (let key in options) {
                     data_item[key] = data[key];
                 }
                 res.push(data_item)
             } else {
-                iter++;
+                count++;
             }
         }
 
         //console.log(iter);
         ctx.body = {
-            expectModeration: files.length - iter,
+            expectModeration: files.length - count,
             data:res.slice(0, max_files_count),
             options: config.moderation.regionOCRModeration.options,
-            user: config.user.name
+            user: template.moderation.moderatedBy || "defaultUser"
         };
+        console.log("___________________");
     }
 
     next();
