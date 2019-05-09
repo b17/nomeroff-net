@@ -17,15 +17,22 @@ function chencheAnnotation (img, ann, chended_numbers, template) {
             ann,
             numberData.name,
         ) + '.json';
+        let imgPath = path.join(base_dir, numberData.img_path);
+
         if (numberData.deleted) {
             if (fs.existsSync(annotationPath)) {
                 fs.unlinkSync(annotationPath);
             }
-            fs.unlinkSync(path.join(base_dir, numberData.img_path));
+            fs.unlinkSync(imgPath);
             return;
         }
-        Object.assign(numberData, {
-            moderation: {isModerated: 1, moderatedBy:who || "unknownUser"}
+        const dimensions = sizeOf(imgPath);
+        Object.assign(numberData, template, {
+            moderation: {isModerated: 1},
+            size: {
+                width: dimensions.width,
+                height: dimensions.height
+            }
         });
         fs.writeFileSync(annotationPath, JSON.stringify(numberData));
     });
@@ -34,7 +41,6 @@ function chencheAnnotation (img, ann, chended_numbers, template) {
 module.exports = function(ctx, next) {
     const max_files_count = ctx.request.body.max_count || 100;
     const chended_numbers = ctx.request.body.chended_numbers;
-    const who_changed = ctx.request.body.who_changed;
 
     let template = Object.assign({}, config.moderation.template);
 
