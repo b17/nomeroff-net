@@ -27,7 +27,7 @@ function chencheAnnotation (img, ann, chended_numbers, template) {
             return;
         }
         const dimensions = sizeOf(imgPath);
-        Object.assign(numberData, template, {
+        numberData = Object.assign({}, template, numberData, {
             moderation: {isModerated: 1},
             size: {
                 width: dimensions.width,
